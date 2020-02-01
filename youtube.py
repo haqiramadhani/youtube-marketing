@@ -4,6 +4,7 @@ import random
 import sys
 import time
 
+import spintax
 from googleapiclient import sample_tools
 
 
@@ -63,12 +64,46 @@ def render(source_type):
 
 def auth():
     scope = 'https://www.googleapis.com/auth/youtube.upload'
-    services, flags = sample_tools.init(['youtube.py', '--noauth_local_webserver'], 'youtube', 'v3', __doc__, __name__, scope=scope)
+    argv = ['youtube.py', '--noauth_local_webserver']
+    services, flags = sample_tools.init(argv, 'youtube', 'v3', __doc__, __name__, scope=scope)
     return services
+
+
+def upload(services):
+    shortcodes = os.listdir('./shortcodes')
+    f = open('input.txt', 'r')
+    title = f.readline()
+    description = f.readline()
+    tags = f.readline()
+    category = 27
+    privacy = 'public'
+    for shortcode in shortcodes:
+        f = open(shortcode, 'r')
+        shortcode = '[' + shortcode.replace('.txt', '') + ']'
+        if shortcode in title:
+            title.replace(shortcode, f.readline())
+        if shortcode in description:
+            description.replace(shortcode, f.readline())
+        if shortcode in tags:
+            tags.replace(shortcode, f.readline())
+    tags = spintax.spin(tags)
+    tags = tags.split(',')
+    body = dict(
+        snippet=dict(
+            title=spintax.spin(title),
+            description=spintax.spin(description),
+            tags=tags,
+            categoryId=category
+        ),
+        status=dict(
+            privacyStatus=privacy
+        )
+    )
 
 
 if __name__ == '__main__':
     print('starting program ....')
     service = auth()
-    args = get_args()
-    output = render(args.type)
+    # args = get_args()
+    # output = render(args.type)
+    service.videos().insert()
