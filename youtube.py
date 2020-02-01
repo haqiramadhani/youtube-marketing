@@ -34,7 +34,7 @@ def write_list_txt(list_files):
     print('writing list file to mylist.txt ....')
     f = open('mylist.txt', 'w')
     for i in list_files:
-        f.writelines("file '" + i + "'")
+        f.write("file 'videos/" + i + "'\n")
     f.close()
 
 
@@ -86,32 +86,36 @@ def upload(services, videos):
     print('reading video description ....')
     f = open('input.txt', 'r')
     title = f.readline()
+    title = title.replace('\n', '')
     description = f.readline()
     keywords = f.readline()
     category = 27
     privacy = 'public'
     print('replacing shortcode ....')
     for shortcode in shortcodes:
-        f = open(shortcode, 'r')
-        shortcode = '[' + shortcode.replace('.txt', '') + ']'
+        f = open('shortcodes/' + shortcode, 'r')
+        text = f.readline()
+        shortcode = '[' + shortcode.replace('.txt', '', ) + ']'
         if shortcode in title:
-            title.replace(shortcode, f.readline())
+            title = title.replace(shortcode, text)
         if shortcode in description:
-            description.replace(shortcode, f.readline())
+            description = description.replace(shortcode, text)
         if shortcode in keywords:
-            keywords.replace(shortcode, f.readline())
+            keywords = keywords.replace(shortcode, text)
     print('spinning video detail ....')
     title = spintax.spin(title)
     if '[title]' in description:
-        description.replace('[title]', title)
+        description = description.replace('[title]', title)
     if '[title]' in keywords:
-        keywords.replace('[title]', title)
+        keywords = keywords.replace('[title]', title)
     keywords = spintax.spin(keywords)
     tags = keywords.split(',')
+    description = description.replace('\\n', '\n')
+    description = spintax.spin(description)
     body = dict(
         snippet=dict(
             title=title,
-            description=spintax.spin(description),
+            description=description,
             tags=tags,
             categoryId=category
         ),
@@ -136,10 +140,10 @@ def resumable_upload(request):
         try:
             print('Uploading video file...')
             status, response = request.next_chunk()
-            print('status => ' + status)
             if response is not None:
                 if 'id' in response:
                     print('Video was successfully uploaded, url: https://youtube.com/watch?v=%s' % response['id'])
+                    os.system('rm output/*')
                 else:
                     exit('The upload failed with an unexpected response: %s' % response)
         except HttpError as err:
