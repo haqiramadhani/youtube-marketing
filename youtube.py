@@ -79,13 +79,16 @@ def auth():
 
 
 def upload(services, videos):
+    print('indexing shortcodes ....')
     shortcodes = os.listdir('./shortcodes')
+    print('reading video description ....')
     f = open('input.txt', 'r')
     title = f.readline()
     description = f.readline()
     keywords = f.readline()
     category = 27
     privacy = 'public'
+    print('replacing shortcode ....')
     for shortcode in shortcodes:
         f = open(shortcode, 'r')
         shortcode = '[' + shortcode.replace('.txt', '') + ']'
@@ -95,6 +98,7 @@ def upload(services, videos):
             description.replace(shortcode, f.readline())
         if shortcode in keywords:
             keywords.replace(shortcode, f.readline())
+    print('spinning video detail ....')
     title = spintax.spin(title)
     if '[title]' in description:
         description.replace('[title]', title)
@@ -113,6 +117,7 @@ def upload(services, videos):
             privacyStatus=privacy
         )
     )
+    print('make request upload ....')
     return services.videos().insert(
         part=','.join(body.keys()),
         body=body,
@@ -126,11 +131,11 @@ def resumable_upload(request):
     retry = 0
     while response is None:
         try:
-            print('Uploading file...')
+            print('Uploading video file...')
             status, response = request.next_chunk()
             if response is not None:
                 if 'id' in response:
-                    print('Video id "%s" was successfully uploaded.' % response['id'])
+                    print('Video was successfully uploaded, url: https://youtube.com/watch?v=%s' % response['id'])
                 else:
                     exit('The upload failed with an unexpected response: %s' % response)
         except HttpError as err:
@@ -160,5 +165,7 @@ if __name__ == '__main__':
     output = render(args.type)
     try:
         upload = upload(service, output)
+        print(upload)
+        resumable_upload(upload)
     except HttpError as error:
         print('An HTTP error %d occurred:\n%s' % (error.resp.status, error.content))
