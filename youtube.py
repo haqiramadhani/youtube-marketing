@@ -71,6 +71,7 @@ def render(source_type):
     return 'output/' + filename + '.mp4'
 
 
+# request new Authentication Code
 def auth():
     scope = 'https://www.googleapis.com/auth/youtube.upload'
     argv = ['youtube.py', '--noauth_local_webserver']
@@ -78,6 +79,7 @@ def auth():
     return services
 
 
+# request upload video
 def upload(services, videos):
     print('indexing shortcodes ....')
     shortcodes = os.listdir('./shortcodes')
@@ -125,6 +127,7 @@ def upload(services, videos):
     )
 
 
+# uploading video
 def resumable_upload(request):
     response = None
     err = None
@@ -133,6 +136,7 @@ def resumable_upload(request):
         try:
             print('Uploading video file...')
             status, response = request.next_chunk()
+            print('status => ' + status)
             if response is not None:
                 if 'id' in response:
                     print('Video was successfully uploaded, url: https://youtube.com/watch?v=%s' % response['id'])
