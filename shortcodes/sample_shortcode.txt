@@ -1,0 +1,1 @@
+{This is an example|This sample shortcode|This another sample spintax in shortcode}
