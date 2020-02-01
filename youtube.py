@@ -1,11 +1,20 @@
 import argparse
+import http.client
 import os
 import random
 import sys
 import time
 
+import httplib2
 import spintax
 from googleapiclient import sample_tools
+from googleapiclient.errors import HttpError
+from googleapiclient.http import MediaFileUpload
+
+RETRIABLE_EXCEPTIONS = (httplib2.HttpLib2Error, IOError, http.client.NotConnected,
+                        http.client.IncompleteRead, http.client.ImproperConnectionState,
+                        http.client.CannotSendRequest, http.client.CannotSendHeader,
+                        http.client.ResponseNotReady, http.client.BadStatusLine)
 
 
 # get list file (videos or images)
@@ -69,12 +78,12 @@ def auth():
     return services
 
 
-def upload(services):
+def upload(services, videos):
     shortcodes = os.listdir('./shortcodes')
     f = open('input.txt', 'r')
     title = f.readline()
     description = f.readline()
-    tags = f.readline()
+    keywords = f.readline()
     category = 27
     privacy = 'public'
     for shortcode in shortcodes:
@@ -84,13 +93,18 @@ def upload(services):
             title.replace(shortcode, f.readline())
         if shortcode in description:
             description.replace(shortcode, f.readline())
-        if shortcode in tags:
-            tags.replace(shortcode, f.readline())
-    tags = spintax.spin(tags)
-    tags = tags.split(',')
+        if shortcode in keywords:
+            keywords.replace(shortcode, f.readline())
+    title = spintax.spin(title)
+    if '[title]' in description:
+        description.replace('[title]', title)
+    if '[title]' in keywords:
+        keywords.replace('[title]', title)
+    keywords = spintax.spin(keywords)
+    tags = keywords.split(',')
     body = dict(
         snippet=dict(
-            title=spintax.spin(title),
+            title=title,
             description=spintax.spin(description),
             tags=tags,
             categoryId=category
@@ -99,11 +113,52 @@ def upload(services):
             privacyStatus=privacy
         )
     )
+    return services.videos().insert(
+        part=','.join(body.keys()),
+        body=body,
+        media_body=MediaFileUpload(videos, chunksize=-1, resumable=True)
+    )
+
+
+def resumable_upload(request):
+    response = None
+    err = None
+    retry = 0
+    while response is None:
+        try:
+            print('Uploading file...')
+            status, response = request.next_chunk()
+            if response is not None:
+                if 'id' in response:
+                    print('Video id "%s" was successfully uploaded.' % response['id'])
+                else:
+                    exit('The upload failed with an unexpected response: %s' % response)
+        except HttpError as err:
+            if err.resp.status in [500, 502, 503, 504]:
+                err = 'A retriable HTTP error %d occurred:\n%s' % (err.resp.status, err.content)
+            else:
+                raise
+        except RETRIABLE_EXCEPTIONS as err:
+            err = 'A retriable error occurred: %s' % err
+
+        if err is not None:
+            print(err)
+            retry += 1
+            if retry > 10:
+                exit('No longer attempting to retry.')
+
+            max_sleep = 2 ** retry
+            sleep_seconds = random.random() * max_sleep
+            print('Sleeping %f seconds and then retrying...' % sleep_seconds)
+            time.sleep(sleep_seconds)
 
 
 if __name__ == '__main__':
     print('starting program ....')
     service = auth()
-    # args = get_args()
-    # output = render(args.type)
-    service.videos().insert()
+    args = get_args()
+    output = render(args.type)
+    try:
+        upload = upload(service, output)
+    except HttpError as error:
+        print('An HTTP error %d occurred:\n%s' % (error.resp.status, error.content))
