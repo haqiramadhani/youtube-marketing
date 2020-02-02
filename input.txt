@@ -1,0 +1,3 @@
+Judul Support Spintax
+Deskripsi baris 1 \n baris 2 \n dst \n support spintax dan shortcodes
+Tags, ini tags, ini juga tags, support spintax, support shortcodes
