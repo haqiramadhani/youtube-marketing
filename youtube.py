@@ -144,6 +144,8 @@ def resumable_upload(request):
                 if 'id' in response:
                     print('Video was successfully uploaded, url: https://youtube.com/watch?v=%s' % response['id'])
                     os.system('rm output/*')
+                    # f = open('uploaded_video.txt', 'a')
+                    print(response)
                 else:
                     exit('The upload failed with an unexpected response: %s' % response)
         except HttpError as err:
